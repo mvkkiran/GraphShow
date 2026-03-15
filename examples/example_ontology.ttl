@@ -1,0 +1,531 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix :     <http://example.org/pharma#> .
+@prefix dc:   <http://purl.org/dc/elements/1.1/> .
+
+# ============================================================
+# Ontology metadata
+# ============================================================
+<http://example.org/pharma> a owl:Ontology ;
+    rdfs:label "Pharma Knowledge Graph Example"@en ;
+    dc:description "Example ontology for pharmaceutical knowledge graph visualization."@en ;
+    owl:versionInfo "1.0" .
+
+# ============================================================
+# Classes
+# ============================================================
+:Thing a owl:Class ;
+    rdfs:label "Thing"@en .
+
+:Agent a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Agent"@en .
+
+:Person a owl:Class ;
+    rdfs:subClassOf :Agent ;
+    rdfs:label "Person"@en .
+
+:Researcher a owl:Class ;
+    rdfs:subClassOf :Person ;
+    rdfs:label "Researcher"@en .
+
+:Physician a owl:Class ;
+    rdfs:subClassOf :Person ;
+    rdfs:label "Physician"@en .
+
+:Organization a owl:Class ;
+    rdfs:subClassOf :Agent ;
+    rdfs:label "Organization"@en .
+
+:PharmaceuticalCompany a owl:Class ;
+    rdfs:subClassOf :Organization ;
+    rdfs:label "Pharmaceutical Company"@en .
+
+:ResearchInstitution a owl:Class ;
+    rdfs:subClassOf :Organization ;
+    rdfs:label "Research Institution"@en .
+
+:Hospital a owl:Class ;
+    rdfs:subClassOf :Organization ;
+    rdfs:label "Hospital"@en .
+
+:Substance a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Substance"@en .
+
+:Drug a owl:Class ;
+    rdfs:subClassOf :Substance ;
+    rdfs:label "Drug"@en .
+
+:Compound a owl:Class ;
+    rdfs:subClassOf :Substance ;
+    rdfs:label "Compound"@en .
+
+:Protein a owl:Class ;
+    rdfs:subClassOf :Substance ;
+    rdfs:label "Protein"@en .
+
+:Gene a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Gene"@en .
+
+:Disease a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Disease"@en .
+
+:ClinicalTrial a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Clinical Trial"@en .
+
+:TrialPhase a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Trial Phase"@en .
+
+:TherapeuticArea a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Therapeutic Area"@en .
+
+:MechanismOfAction a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Mechanism of Action"@en .
+
+:AdverseEvent a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Adverse Event"@en .
+
+:Biomarker a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Biomarker"@en .
+
+:Pathway a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Biological Pathway"@en .
+
+:Publication a owl:Class ;
+    rdfs:subClassOf :Thing ;
+    rdfs:label "Publication"@en .
+
+# ============================================================
+# Object Properties
+# ============================================================
+:treatsDisease a owl:ObjectProperty ;
+    rdfs:label "treats disease"@en ;
+    rdfs:domain :Drug ;
+    rdfs:range :Disease .
+
+:targetsProtein a owl:ObjectProperty ;
+    rdfs:label "targets protein"@en ;
+    rdfs:domain :Drug ;
+    rdfs:range :Protein .
+
+:encodedByGene a owl:ObjectProperty ;
+    rdfs:label "encoded by gene"@en ;
+    rdfs:domain :Protein ;
+    rdfs:range :Gene .
+
+:hasMechanism a owl:ObjectProperty ;
+    rdfs:label "has mechanism of action"@en ;
+    rdfs:domain :Drug ;
+    rdfs:range :MechanismOfAction .
+
+:involvedInPathway a owl:ObjectProperty ;
+    rdfs:label "involved in pathway"@en ;
+    rdfs:domain :Protein ;
+    rdfs:range :Pathway .
+
+:hasTrial a owl:ObjectProperty ;
+    rdfs:label "has clinical trial"@en ;
+    rdfs:domain :Drug ;
+    rdfs:range :ClinicalTrial .
+
+:hasPhase a owl:ObjectProperty ;
+    rdfs:label "has phase"@en ;
+    rdfs:domain :ClinicalTrial ;
+    rdfs:range :TrialPhase .
+
+:sponsoredBy a owl:ObjectProperty ;
+    rdfs:label "sponsored by"@en ;
+    rdfs:domain :ClinicalTrial ;
+    rdfs:range :Organization .
+
+:conductedAt a owl:ObjectProperty ;
+    rdfs:label "conducted at"@en ;
+    rdfs:domain :ClinicalTrial ;
+    rdfs:range :Hospital .
+
+:principalInvestigator a owl:ObjectProperty ;
+    rdfs:label "principal investigator"@en ;
+    rdfs:domain :ClinicalTrial ;
+    rdfs:range :Researcher .
+
+:belongsToArea a owl:ObjectProperty ;
+    rdfs:label "belongs to therapeutic area"@en ;
+    rdfs:domain :Disease ;
+    rdfs:range :TherapeuticArea .
+
+:hasAdverseEvent a owl:ObjectProperty ;
+    rdfs:label "has adverse event"@en ;
+    rdfs:domain :Drug ;
+    rdfs:range :AdverseEvent .
+
+:hasBiomarker a owl:ObjectProperty ;
+    rdfs:label "has biomarker"@en ;
+    rdfs:domain :Disease ;
+    rdfs:range :Biomarker .
+
+:associatedWithGene a owl:ObjectProperty ;
+    rdfs:label "associated with gene"@en ;
+    rdfs:domain :Disease ;
+    rdfs:range :Gene .
+
+:publishedBy a owl:ObjectProperty ;
+    rdfs:label "published by"@en ;
+    rdfs:domain :Publication ;
+    rdfs:range :Researcher .
+
+:aboutDrug a owl:ObjectProperty ;
+    rdfs:label "about drug"@en ;
+    rdfs:domain :Publication ;
+    rdfs:range :Drug .
+
+:affiliatedWith a owl:ObjectProperty ;
+    rdfs:label "affiliated with"@en ;
+    rdfs:domain :Researcher ;
+    rdfs:range :Organization .
+
+# ============================================================
+# Datatype Properties
+# ============================================================
+:drugName a owl:DatatypeProperty ;
+    rdfs:label "drug name"@en ;
+    rdfs:domain :Drug ;
+    rdfs:range xsd:string .
+
+:approvalDate a owl:DatatypeProperty ;
+    rdfs:label "approval date"@en ;
+    rdfs:domain :Drug ;
+    rdfs:range xsd:date .
+
+:molecularWeight a owl:DatatypeProperty ;
+    rdfs:label "molecular weight"@en ;
+    rdfs:domain :Compound ;
+    rdfs:range xsd:float .
+
+:trialStartDate a owl:DatatypeProperty ;
+    rdfs:label "trial start date"@en ;
+    rdfs:domain :ClinicalTrial ;
+    rdfs:range xsd:date .
+
+:enrollment a owl:DatatypeProperty ;
+    rdfs:label "enrollment"@en ;
+    rdfs:domain :ClinicalTrial ;
+    rdfs:range xsd:integer .
+
+# ============================================================
+# Individuals — Therapeutic Areas
+# ============================================================
+:Oncology a :TherapeuticArea ;
+    rdfs:label "Oncology"@en .
+
+:Immunology a :TherapeuticArea ;
+    rdfs:label "Immunology"@en .
+
+:Cardiology a :TherapeuticArea ;
+    rdfs:label "Cardiology"@en .
+
+:Neurology a :TherapeuticArea ;
+    rdfs:label "Neurology"@en .
+
+:Hematology a :TherapeuticArea ;
+    rdfs:label "Hematology"@en .
+
+# ============================================================
+# Individuals — Trial Phases
+# ============================================================
+:Phase1 a :TrialPhase ; rdfs:label "Phase I"@en .
+:Phase2 a :TrialPhase ; rdfs:label "Phase II"@en .
+:Phase3 a :TrialPhase ; rdfs:label "Phase III"@en .
+:Phase4 a :TrialPhase ; rdfs:label "Phase IV"@en .
+
+# ============================================================
+# Individuals — Diseases
+# ============================================================
+:Melanoma a :Disease ;
+    rdfs:label "Melanoma"@en ;
+    :belongsToArea :Oncology .
+
+:LungCancer a :Disease ;
+    rdfs:label "Non-Small Cell Lung Cancer"@en ;
+    :belongsToArea :Oncology .
+
+:RheumatoidArthritis a :Disease ;
+    rdfs:label "Rheumatoid Arthritis"@en ;
+    :belongsToArea :Immunology .
+
+:MultipleSclerosis a :Disease ;
+    rdfs:label "Multiple Sclerosis"@en ;
+    :belongsToArea :Neurology .
+
+:AtrialFibrillation a :Disease ;
+    rdfs:label "Atrial Fibrillation"@en ;
+    :belongsToArea :Cardiology .
+
+:AcuteMyeloidLeukemia a :Disease ;
+    rdfs:label "Acute Myeloid Leukemia"@en ;
+    :belongsToArea :Hematology .
+
+# ============================================================
+# Individuals — Genes & Proteins
+# ============================================================
+:BRAF_Gene a :Gene ;
+    rdfs:label "BRAF"@en .
+
+:EGFR_Gene a :Gene ;
+    rdfs:label "EGFR"@en .
+
+:PD1_Gene a :Gene ;
+    rdfs:label "PDCD1"@en .
+
+:TNF_Gene a :Gene ;
+    rdfs:label "TNF"@en .
+
+:JAK2_Gene a :Gene ;
+    rdfs:label "JAK2"@en .
+
+:BRAF_Protein a :Protein ;
+    rdfs:label "BRAF kinase"@en ;
+    :encodedByGene :BRAF_Gene .
+
+:EGFR_Protein a :Protein ;
+    rdfs:label "EGFR receptor"@en ;
+    :encodedByGene :EGFR_Gene .
+
+:PD1_Protein a :Protein ;
+    rdfs:label "PD-1 receptor"@en ;
+    :encodedByGene :PD1_Gene .
+
+:TNFalpha a :Protein ;
+    rdfs:label "TNF-alpha"@en ;
+    :encodedByGene :TNF_Gene .
+
+:JAK2_Protein a :Protein ;
+    rdfs:label "JAK2 kinase"@en ;
+    :encodedByGene :JAK2_Gene .
+
+# ============================================================
+# Individuals — Pathways
+# ============================================================
+:MAPKPathway a :Pathway ;
+    rdfs:label "MAPK Signaling Pathway"@en .
+
+:JAK_STAT_Pathway a :Pathway ;
+    rdfs:label "JAK-STAT Signaling Pathway"@en .
+
+:NFkB_Pathway a :Pathway ;
+    rdfs:label "NF-kB Signaling Pathway"@en .
+
+:BRAF_Protein :involvedInPathway :MAPKPathway .
+:JAK2_Protein :involvedInPathway :JAK_STAT_Pathway .
+:TNFalpha :involvedInPathway :NFkB_Pathway .
+
+# ============================================================
+# Individuals — Mechanisms of Action
+# ============================================================
+:BRAFInhibition a :MechanismOfAction ;
+    rdfs:label "BRAF Inhibition"@en .
+
+:PD1Blockade a :MechanismOfAction ;
+    rdfs:label "PD-1 Immune Checkpoint Blockade"@en .
+
+:TNFInhibition a :MechanismOfAction ;
+    rdfs:label "TNF-alpha Inhibition"@en .
+
+:EGFRInhibition a :MechanismOfAction ;
+    rdfs:label "EGFR Inhibition"@en .
+
+:JAK_Inhibition a :MechanismOfAction ;
+    rdfs:label "JAK Inhibition"@en .
+
+# ============================================================
+# Individuals — Drugs
+# ============================================================
+:Nivolumab a :Drug ;
+    rdfs:label "Nivolumab"@en ;
+    :drugName "Nivolumab" ;
+    :approvalDate "2014-12-22"^^xsd:date ;
+    :treatsDisease :Melanoma, :LungCancer ;
+    :targetsProtein :PD1_Protein ;
+    :hasMechanism :PD1Blockade .
+
+:Dabrafenib a :Drug ;
+    rdfs:label "Dabrafenib"@en ;
+    :drugName "Dabrafenib" ;
+    :approvalDate "2013-05-29"^^xsd:date ;
+    :treatsDisease :Melanoma ;
+    :targetsProtein :BRAF_Protein ;
+    :hasMechanism :BRAFInhibition .
+
+:Adalimumab a :Drug ;
+    rdfs:label "Adalimumab"@en ;
+    :drugName "Adalimumab" ;
+    :approvalDate "2002-12-31"^^xsd:date ;
+    :treatsDisease :RheumatoidArthritis ;
+    :targetsProtein :TNFalpha ;
+    :hasMechanism :TNFInhibition .
+
+:Erlotinib a :Drug ;
+    rdfs:label "Erlotinib"@en ;
+    :drugName "Erlotinib" ;
+    :approvalDate "2004-11-18"^^xsd:date ;
+    :treatsDisease :LungCancer ;
+    :targetsProtein :EGFR_Protein ;
+    :hasMechanism :EGFRInhibition .
+
+:Ruxolitinib a :Drug ;
+    rdfs:label "Ruxolitinib"@en ;
+    :drugName "Ruxolitinib" ;
+    :approvalDate "2011-11-16"^^xsd:date ;
+    :treatsDisease :AcuteMyeloidLeukemia ;
+    :targetsProtein :JAK2_Protein ;
+    :hasMechanism :JAK_Inhibition .
+
+# ============================================================
+# Individuals — Adverse Events
+# ============================================================
+:Fatigue a :AdverseEvent ; rdfs:label "Fatigue"@en .
+:Rash a :AdverseEvent ; rdfs:label "Skin Rash"@en .
+:Nausea a :AdverseEvent ; rdfs:label "Nausea"@en .
+:Headache a :AdverseEvent ; rdfs:label "Headache"@en .
+:Immunotoxicity a :AdverseEvent ; rdfs:label "Immune-related Toxicity"@en .
+
+:Nivolumab :hasAdverseEvent :Fatigue, :Immunotoxicity .
+:Dabrafenib :hasAdverseEvent :Rash, :Headache .
+:Adalimumab :hasAdverseEvent :Nausea, :Headache .
+:Erlotinib :hasAdverseEvent :Rash, :Fatigue .
+:Ruxolitinib :hasAdverseEvent :Fatigue, :Nausea .
+
+# ============================================================
+# Individuals — Biomarkers
+# ============================================================
+:PDL1_Expression a :Biomarker ;
+    rdfs:label "PD-L1 Expression"@en .
+
+:BRAF_V600E a :Biomarker ;
+    rdfs:label "BRAF V600E Mutation"@en .
+
+:EGFR_Mutation a :Biomarker ;
+    rdfs:label "EGFR Activating Mutation"@en .
+
+:Melanoma :hasBiomarker :BRAF_V600E .
+:LungCancer :hasBiomarker :EGFR_Mutation, :PDL1_Expression .
+:Melanoma :associatedWithGene :BRAF_Gene .
+:LungCancer :associatedWithGene :EGFR_Gene .
+:AcuteMyeloidLeukemia :associatedWithGene :JAK2_Gene .
+
+# ============================================================
+# Individuals — Organizations
+# ============================================================
+:BMS a :PharmaceuticalCompany ;
+    rdfs:label "Bristol Myers Squibb"@en .
+
+:Novartis a :PharmaceuticalCompany ;
+    rdfs:label "Novartis"@en .
+
+:AbbVie a :PharmaceuticalCompany ;
+    rdfs:label "AbbVie"@en .
+
+:Roche a :PharmaceuticalCompany ;
+    rdfs:label "Roche"@en .
+
+:MIT a :ResearchInstitution ;
+    rdfs:label "MIT Koch Institute"@en .
+
+:MayoClinic a :Hospital ;
+    rdfs:label "Mayo Clinic"@en .
+
+:MGH a :Hospital ;
+    rdfs:label "Massachusetts General Hospital"@en .
+
+# ============================================================
+# Individuals — Researchers
+# ============================================================
+:DrSmith a :Researcher ;
+    rdfs:label "Dr. Jane Smith"@en ;
+    :affiliatedWith :MIT .
+
+:DrJones a :Researcher ;
+    rdfs:label "Dr. Robert Jones"@en ;
+    :affiliatedWith :MayoClinic .
+
+:DrPatel a :Researcher ;
+    rdfs:label "Dr. Anita Patel"@en ;
+    :affiliatedWith :MGH .
+
+# ============================================================
+# Individuals — Clinical Trials
+# ============================================================
+:TrialCheckMate067 a :ClinicalTrial ;
+    rdfs:label "CheckMate 067"@en ;
+    :hasTrial :Nivolumab ;
+    :hasPhase :Phase3 ;
+    :sponsoredBy :BMS ;
+    :conductedAt :MayoClinic ;
+    :principalInvestigator :DrSmith ;
+    :trialStartDate "2013-07-01"^^xsd:date ;
+    :enrollment 945 .
+
+# Fix: drug hasTrial trial (not trial hasTrial drug)
+:Nivolumab :hasTrial :TrialCheckMate067 .
+
+:TrialBREAK3 a :ClinicalTrial ;
+    rdfs:label "BREAK-3"@en ;
+    :hasPhase :Phase3 ;
+    :sponsoredBy :Novartis ;
+    :conductedAt :MGH ;
+    :principalInvestigator :DrJones ;
+    :trialStartDate "2010-12-01"^^xsd:date ;
+    :enrollment 250 .
+
+:Dabrafenib :hasTrial :TrialBREAK3 .
+
+:TrialHUMIRA_RA a :ClinicalTrial ;
+    rdfs:label "HUMIRA RA Phase III"@en ;
+    :hasPhase :Phase3 ;
+    :sponsoredBy :AbbVie ;
+    :conductedAt :MayoClinic ;
+    :principalInvestigator :DrPatel ;
+    :trialStartDate "2001-03-15"^^xsd:date ;
+    :enrollment 619 .
+
+:Adalimumab :hasTrial :TrialHUMIRA_RA .
+
+:TrialERLOTINIB_NSCLC a :ClinicalTrial ;
+    rdfs:label "Erlotinib NSCLC Phase III"@en ;
+    :hasPhase :Phase3 ;
+    :sponsoredBy :Roche ;
+    :conductedAt :MGH ;
+    :principalInvestigator :DrSmith ;
+    :trialStartDate "2001-09-01"^^xsd:date ;
+    :enrollment 731 .
+
+:Erlotinib :hasTrial :TrialERLOTINIB_NSCLC .
+
+# ============================================================
+# Individuals — Publications
+# ============================================================
+:PubCheckMate067 a :Publication ;
+    rdfs:label "Combined Nivolumab and Ipilimumab in Melanoma (NEJM 2015)"@en ;
+    :publishedBy :DrSmith ;
+    :aboutDrug :Nivolumab .
+
+:PubBRAF a :Publication ;
+    rdfs:label "BRAF Inhibition in Melanoma (Nature 2012)"@en ;
+    :publishedBy :DrJones ;
+    :aboutDrug :Dabrafenib .
+
+:PubTNF a :Publication ;
+    rdfs:label "TNF Blockade in Rheumatoid Arthritis (Lancet 2003)"@en ;
+    :publishedBy :DrPatel ;
+    :aboutDrug :Adalimumab .
