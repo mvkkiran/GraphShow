@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knowledge Graph Viewer</title>
+<script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
+<script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
+<script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+<style>
+  :root {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-card: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+  }
+  .light-mode {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --border-color: #e2e8f0;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+  #cy {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0; left: 0;
+  }
+  .controls-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    max-width: 70%;
+  }
+  .ctrl-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .ctrl-btn:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .ctrl-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .info-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    z-index: 10;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    backdrop-filter: blur(8px);
+  }
+  .tooltip {
+    position: absolute;
+    z-index: 20;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 12px;
+    max-width: 400px;
+    word-wrap: break-word;
+    display: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    backdrop-filter: blur(12px);
+  }
+  .tooltip .tt-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .tooltip .tt-type {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .tooltip .tt-uri {
+    font-size: 10px;
+    color: var(--text-secondary);
+    word-break: break-all;
+    margin-bottom: 6px;
+  }
+  .tooltip .tt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 0;
+    font-size: 11px;
+  }
+  .tooltip .tt-row .tt-key { color: var(--text-secondary); }
+  .tooltip .tt-row .tt-val { color: var(--text-primary); font-weight: 500; }
+  .search-overlay {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+  }
+  .search-input {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    width: 220px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-secondary); }
+  .legend {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 10;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 11px;
+    backdrop-filter: blur(8px);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-rect { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .legend-line { width: 16px; height: 2px; flex-shrink: 0; }
+
+  /* ===== RIGHT-CLICK CONTEXT MENU ===== */
+  #ctx-menu {
+    display: none;
+    position: absolute;
+    z-index: 100;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 6px 0;
+    min-width: 220px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    backdrop-filter: blur(16px);
+    overflow: visible;
+  }
+  #ctx-menu .ctx-header {
+    padding: 8px 14px 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+  }
+  #ctx-menu .ctx-item {
+    padding: 7px 14px;
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.12s;
+  }
+  #ctx-menu .ctx-item:hover { background: rgba(99,102,241,0.2); }
+  #ctx-menu .ctx-item .ctx-icon { width: 16px; text-align: center; flex-shrink: 0; }
+  #ctx-menu .ctx-sep { height: 1px; background: var(--border-color); margin: 4px 0; }
+  #ctx-menu .ctx-sub { position: relative; }
+  #ctx-menu .ctx-sub-menu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 6px 0;
+    min-width: 180px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    backdrop-filter: blur(16px);
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  #ctx-menu .ctx-sub:hover > .ctx-sub-menu { display: block; }
+  #ctx-menu .ctx-sub-menu .ctx-item { font-size: 11px; padding: 5px 12px; }
+
+  /* ===== HOVER REMOVE BUTTON ===== */
+  #node-remove-btn {
+    display: none;
+    position: absolute;
+    z-index: 30;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    transition: transform 0.12s, background 0.12s;
+    pointer-events: auto;
+    user-select: none;
+  }
+  #node-remove-btn:hover {
+    background: #dc2626;
+    transform: scale(1.25);
+  }
+
+  /* ===== FULLSCREEN ===== */
+  :-webkit-full-screen { background: var(--bg-primary); }
+  :-moz-full-screen { background: var(--bg-primary); }
+  :fullscreen { background: var(--bg-primary); }
+</style>
+</head>
+<body>
+<div id="cy"></div>
+
+<!-- Controls -->
+<div class="controls-overlay">
+  <button class="ctrl-btn" onclick="toggleFullscreen()" title="Toggle fullscreen">⛶ Fullscreen</button>
+  <button class="ctrl-btn" onclick="fitGraph()" title="Fit graph to view">⊞ Fit</button>
+  <button class="ctrl-btn" onclick="zoomIn()" title="Zoom in">+ Zoom</button>
+  <button class="ctrl-btn" onclick="zoomOut()" title="Zoom out">− Zoom</button>
+  <button class="ctrl-btn" onclick="setLayout('fcose')" title="Force-directed layout">◉ Force</button>
+  <button class="ctrl-btn" onclick="setLayout('breadthfirst')" title="Hierarchical layout">☰ Hierarchy</button>
+  <button class="ctrl-btn" onclick="setLayout('circle')" title="Circular layout">○ Circle</button>
+  <button class="ctrl-btn" onclick="setLayout('grid')" title="Grid layout">▦ Grid</button>
+  <button class="ctrl-btn" id="btnLabels" onclick="cycleLabelMode()" title="Cycle labels: All / Hover / None">𝐓 Labels: All</button>
+  <button class="ctrl-btn" onclick="exportPNG()" title="Export as PNG">📷 PNG</button>
+  <button class="ctrl-btn" onclick="exportSVG()" title="Export as SVG">🖼 SVG</button>
+  <button class="ctrl-btn" onclick="exportJSON()" title="Export JSON">{ } JSON</button>
+  <button class="ctrl-btn" onclick="toggleTheme()" title="Toggle light/dark">◐ Theme</button>
+</div>
+
+<!-- Search -->
+<div class="search-overlay">
+  <input type="text" class="search-input" id="searchInput" placeholder="Search nodes..." oninput="searchNodes(this.value)">
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- Context menu -->
+<div id="ctx-menu"></div>
+
+<!-- Hover remove button -->
+<div id="node-remove-btn" title="Remove node">&times;</div>
+
+<!-- Info -->
+<div class="info-overlay" id="info">Nodes: 0 | Edges: 0</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div> Class</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div> Instance</div>
+  <div class="legend-item"><div class="legend-rect" style="background:#f59e0b"></div> Literal</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Property</div>
+  <div class="legend-item"><div class="legend-line" style="background:#8b5cf6"></div> SubClassOf</div>
+  <div class="legend-item"><div class="legend-line" style="background:#ec4899;border-top:1px dashed #ec4899;height:0"></div> rdf:type</div>
+  <div class="legend-item"><div class="legend-line" style="background:#06b6d4"></div> Object Prop</div>
+  <div class="legend-item"><div class="legend-line" style="background:#f59e0b;border-top:1px dotted #f59e0b;height:0"></div> Datatype Prop</div>
+</div>
+
+<script>
+// ==================== DATA ====================
+const elements = __ELEMENTS__;
+const graphStyle = __STYLE_OVERRIDES__ || {};
+
+// ==================== LABEL MODES: all / hover / none ====================
+const LABEL_MODES = ['all', 'hover', 'none'];
+let labelModeIndex = 0;
+let labelMode = LABEL_MODES[0];
+
+// ==================== CYTOSCAPE INIT ====================
+let isDark = true;
+
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: elements,
+  style: [
+    {
+      selector: 'node',
+      style: {
+        'label': 'data(label)',
+        'background-color': 'data(color)',
+        'shape': 'data(shape)',
+        'width': 'data(size)',
+        'height': 'data(size)',
+        'font-size': '10px',
+        'color': '#f1f5f9',
+        'text-outline-color': '#0f172a',
+        'text-outline-width': 2,
+        'text-valign': 'bottom',
+        'text-halign': 'center',
+        'text-margin-y': 6,
+        'text-max-width': '100px',
+        'text-wrap': 'ellipsis',
+        'border-width': 0,
+        'border-color': '#ffffff',
+        'overlay-opacity': 0,
+        'transition-property': 'background-color, border-width, width, height, border-color, opacity',
+        'transition-duration': '0.15s',
+      }
+    },
+    {
+      selector: 'node[node_type="literal"]',
+      style: {
+        'shape': 'round-rectangle',
+        'width': 'label',
+        'height': 'label',
+        'padding': '6px',
+        'font-size': '8px',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'text-margin-y': 0,
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        'width': 1.5,
+        'line-color': 'data(color)',
+        'target-arrow-color': 'data(color)',
+        'target-arrow-shape': 'triangle',
+        'arrow-scale': 0.8,
+        'curve-style': 'bezier',
+        'font-size': '8px',
+        'color': '#94a3b8',
+        'text-rotation': 'autorotate',
+        'text-outline-color': '#0f172a',
+        'text-outline-width': 1.5,
+        'overlay-opacity': 0,
+        'opacity': 0.7,
+        'transition-property': 'opacity, width, line-color',
+        'transition-duration': '0.15s',
+      }
+    },
+    { selector: 'edge[line_style="dashed"]', style: { 'line-style': 'dashed' } },
+    { selector: 'edge[line_style="dotted"]', style: { 'line-style': 'dotted' } },
+    { selector: 'node:selected', style: { 'border-width': 3, 'border-color': '#ffffff' } },
+    { selector: '.highlighted', style: { 'border-width': 3, 'border-color': '#fbbf24', 'z-index': 10 } },
+    { selector: '.faded', style: { 'opacity': 0.15 } },
+    { selector: '.neighbor', style: { 'border-width': 2, 'border-color': '#22d3ee' } },
+    { selector: 'edge.highlighted-edge', style: { 'width': 3, 'opacity': 1, 'z-index': 10 } },
+    {
+      selector: '.search-match',
+      style: {
+        'border-width': 4, 'border-color': '#fbbf24', 'z-index': 20,
+        'width': e => e.data('size') * 1.5, 'height': e => e.data('size') * 1.5,
+      }
+    },
+    // Grabbed node glow
+    {
+      selector: '.physics-grabbed',
+      style: {
+        'border-width': 4, 'border-color': '#818cf8', 'border-opacity': 0.9, 'z-index': 999,
+        'width': e => e.data('size') * 1.2, 'height': e => e.data('size') * 1.2,
+      }
+    },
+    // Spring-active neighbors
+    { selector: '.spring-active', style: { 'border-width': 1.5, 'border-color': '#6366f1', 'border-opacity': 0.5 } },
+    // Labels hidden (for "none" and "hover" base)
+    { selector: '.label-hidden', style: { 'label': '' } },
+    // Hover-reveal label
+    { selector: '.label-hover-show', style: { 'label': 'data(label)', 'font-size': '11px', 'z-index': 50 } },
+  ],
+  layout: { name: 'fcose', animate: true, animationDuration: 800, randomize: true, nodeSeparation: 120 },
+  wheelSensitivity: 0.3,
+  minZoom: 0.05,
+  maxZoom: 5,
+});
+
+// ==================== INFO PANEL ====================
+function updateInfo() {
+  const vis = cy.nodes().filter(n => n.style('display') !== 'none');
+  const visE = cy.edges().filter(e => e.style('display') !== 'none');
+  document.getElementById('info').innerHTML = `Nodes: ${vis.length} | Edges: ${visE.length}`;
+}
+updateInfo();
+
+
+// ====================================================================
+//  LABEL MODE CYCLING: All -> Hover -> None
+// ====================================================================
+function cycleLabelMode() {
+  labelModeIndex = (labelModeIndex + 1) % LABEL_MODES.length;
+  labelMode = LABEL_MODES[labelModeIndex];
+  applyLabelMode();
+  const btn = document.getElementById('btnLabels');
+  const modeLabel = labelMode === 'all' ? 'All' : labelMode === 'hover' ? 'Hover' : 'None';
+  btn.textContent = '\uD835\uDC13 Labels: ' + modeLabel;
+  if (labelMode !== 'all') btn.classList.add('active'); else btn.classList.remove('active');
+}
+
+function applyLabelMode() {
+  cy.batch(function() {
+    if (labelMode === 'all') {
+      cy.nodes().removeClass('label-hidden label-hover-show');
+      cy.nodes().style('label', function(ele) { return ele.data('label'); });
+    } else if (labelMode === 'hover') {
+      cy.nodes().addClass('label-hidden').removeClass('label-hover-show');
+    } else { // none
+      cy.nodes().addClass('label-hidden').removeClass('label-hover-show');
+    }
+  });
+}
+
+
+// ====================================================================
+//  PHYSICS ENGINE — spring sim (NO center gravity, dragged nodes PIN)
+// ====================================================================
+const SIM = {
+  springStrength  : 0.025,
+  restLength      : 140,
+  damping         : 0.78,
+  repulsion       : 3500,
+  repulsionRange  : 300,
+  centerGravity   : 0,       // ZERO — nodes stay where placed
+  velocityCap     : 20,
+  settleThreshold : 0.2,
+  releaseKick     : 0.25,
+
+  running   : false,
+  rafId     : null,
+  grabbed   : null,
+  velocities: new Map(),
+  pinned    : new Set(),
+  lastMouse : null,
+  cursorVel : {vx: 0, vy: 0},
+};
+
+function simInit() {
+  cy.nodes().forEach(n => {
+    if (!SIM.velocities.has(n.id())) SIM.velocities.set(n.id(), {vx: 0, vy: 0});
+  });
+}
+simInit();
+
+function simWake() {
+  if (SIM.running) return;
+  SIM.running = true;
+  SIM.rafId = requestAnimationFrame(simTick);
+}
+
+function simTick() {
+  if (!SIM.running) return;
+  const nodes = cy.nodes().filter(n => n.style('display') !== 'none');
+  const edges = cy.edges().filter(e => e.style('display') !== 'none');
+  const forces = new Map();
+  nodes.forEach(n => forces.set(n.id(), {fx: 0, fy: 0}));
+
+  // Spring forces along edges
+  edges.forEach(e => {
+    const src = e.source(), tgt = e.target();
+    if (src.style('display') === 'none' || tgt.style('display') === 'none') return;
+    const sp = src.position(), tp = tgt.position();
+    const dx = tp.x - sp.x, dy = tp.y - sp.y;
+    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+    const displacement = dist - SIM.restLength;
+    const force = SIM.springStrength * displacement;
+    const fx = (dx/dist)*force, fy = (dy/dist)*force;
+    const sf = forces.get(src.id()), tf = forces.get(tgt.id());
+    if (sf) { sf.fx += fx; sf.fy += fy; }
+    if (tf) { tf.fx -= fx; tf.fy -= fy; }
+  });
+
+  // Repulsion between nearby nodes
+  const nodeArr = nodes.toArray();
+  for (let i = 0; i < nodeArr.length; i++) {
+    const a = nodeArr[i], ap = a.position();
+    for (let j = i+1; j < nodeArr.length; j++) {
+      const b = nodeArr[j], bp = b.position();
+      const dx = bp.x - ap.x, dy = bp.y - ap.y;
+      const distSq = dx*dx + dy*dy;
+      if (distSq > SIM.repulsionRange * SIM.repulsionRange) continue;
+      const dist = Math.sqrt(distSq) || 1;
+      const force = SIM.repulsion / distSq;
+      const fx = (dx/dist)*force, fy = (dy/dist)*force;
+      const af = forces.get(a.id()), bf = forces.get(b.id());
+      if (af) { af.fx -= fx; af.fy -= fy; }
+      if (bf) { bf.fx += fx; bf.fy += fy; }
+    }
+  }
+
+  let totalKE = 0;
+  cy.batch(function() {
+    nodes.forEach(n => {
+      const id = n.id();
+      if (SIM.grabbed && SIM.grabbed.id() === id) return;
+      if (SIM.pinned.has(id)) return;
+      const v = SIM.velocities.get(id) || {vx:0, vy:0};
+      const f = forces.get(id) || {fx:0, fy:0};
+      v.vx = (v.vx + f.fx) * SIM.damping;
+      v.vy = (v.vy + f.fy) * SIM.damping;
+      const speed = Math.sqrt(v.vx*v.vx + v.vy*v.vy);
+      if (speed > SIM.velocityCap) { const s = SIM.velocityCap/speed; v.vx *= s; v.vy *= s; }
+      const p = n.position();
+      n.position({ x: p.x + v.vx, y: p.y + v.vy });
+      totalKE += v.vx*v.vx + v.vy*v.vy;
+    });
+  });
+
+  if (totalKE < SIM.settleThreshold && !SIM.grabbed) {
+    SIM.running = false;
+    cy.nodes().removeClass('spring-active');
+    return;
+  }
+  SIM.rafId = requestAnimationFrame(simTick);
+}
+
+function simKickAll(strength) {
+  cy.nodes().forEach(n => {
+    if (SIM.pinned.has(n.id())) return;
+    const v = SIM.velocities.get(n.id()) || {vx:0, vy:0};
+    v.vx += (Math.random()-0.5) * strength;
+    v.vy += (Math.random()-0.5) * strength;
+    SIM.velocities.set(n.id(), v);
+  });
+  simWake();
+}
+
+
+// ====================================================================
+//  DRAG HANDLERS — dragged node PINS where you release it
+// ====================================================================
+cy.on('grab', 'node', function(evt) {
+  const node = evt.target;
+  SIM.grabbed = node;
+  SIM.lastMouse = {x: node.position().x, y: node.position().y, t: performance.now()};
+  SIM.cursorVel = {vx:0, vy:0};
+  node.addClass('physics-grabbed');
+  node.neighborhood().nodes().addClass('spring-active');
+  hideNodeRemoveBtn();
+  simWake();
+});
+
+cy.on('drag', 'node', function(evt) {
+  const node = evt.target;
+  if (!SIM.grabbed || SIM.grabbed.id() !== node.id()) return;
+  const pos = node.position();
+  const now = performance.now();
+  if (SIM.lastMouse) {
+    const dt = (now - SIM.lastMouse.t) || 1;
+    const rawVx = (pos.x - SIM.lastMouse.x)/dt*16;
+    const rawVy = (pos.y - SIM.lastMouse.y)/dt*16;
+    SIM.cursorVel.vx = SIM.cursorVel.vx*0.6 + rawVx*0.4;
+    SIM.cursorVel.vy = SIM.cursorVel.vy*0.6 + rawVy*0.4;
+  }
+  SIM.lastMouse = {x: pos.x, y: pos.y, t: now};
+  if (!SIM.running) simWake();
+});
+
+cy.on('free', 'node', function(evt) {
+  const node = evt.target;
+  node.removeClass('physics-grabbed');
+  cy.nodes().removeClass('spring-active');
+  if (!SIM.grabbed || SIM.grabbed.id() !== node.id()) return;
+
+  // PIN the node where it was dropped
+  SIM.pinned.add(node.id());
+  const v = SIM.velocities.get(node.id()) || {vx:0, vy:0};
+  v.vx = 0; v.vy = 0;
+
+  // Gentle ripple to unpinned neighbors
+  node.neighborhood().nodes().forEach(nn => {
+    if (SIM.pinned.has(nn.id())) return;
+    const nv = SIM.velocities.get(nn.id()) || {vx:0, vy:0};
+    const nPos = nn.position(), gPos = node.position();
+    const dx = nPos.x - gPos.x, dy = nPos.y - gPos.y;
+    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+    nv.vx += (dx/dist)*2.0 + SIM.cursorVel.vx*0.08;
+    nv.vy += (dy/dist)*2.0 + SIM.cursorVel.vy*0.08;
+    SIM.velocities.set(nn.id(), nv);
+  });
+
+  SIM.grabbed = null;
+  SIM.lastMouse = null;
+  simWake();
+});
+
+
+// ====================================================================
+//  RIGHT-CLICK CONTEXT MENU
+// ====================================================================
+const ctxMenu = document.getElementById('ctx-menu');
+let ctxTarget = null;
+
+document.getElementById('cy').addEventListener('contextmenu', e => e.preventDefault());
+
+function hideCtxMenu() { ctxMenu.style.display = 'none'; ctxTarget = null; }
+
+cy.on('tap', hideCtxMenu);
+cy.on('pan', hideCtxMenu);
+cy.on('pan zoom', function() { hideNodeRemoveBtn(); hoverNode = null; });
+document.addEventListener('click', function(e) {
+  if (!ctxMenu.contains(e.target)) hideCtxMenu();
+});
+
+cy.on('cxttap', 'node', function(evt) {
+  evt.originalEvent.preventDefault();
+  ctxTarget = evt.target;
+  const data = ctxTarget.data();
+
+  // Gather unique classes for submenus
+  const allClasses = [];
+  const seen = new Set();
+  cy.nodes().forEach(n => {
+    (n.data('classes') || []).forEach(c => {
+      if (!seen.has(c)) { seen.add(c); allClasses.push(c); }
+    });
+    if (n.data('node_type') === 'class' && !seen.has(n.data('id'))) {
+      seen.add(n.data('id')); allClasses.push(n.data('id'));
+    }
+  });
+  allClasses.sort((a,b) => shortUri(a).localeCompare(shortUri(b)));
+
+  let html = '<div class="ctx-header">' + escapeHtml(data.label) + '</div>';
+
+  html += '<div class="ctx-item" onclick="ctxExpandNeighbors()"><span class="ctx-icon">🔗</span> Expand Neighbors</div>';
+  html += '<div class="ctx-item" onclick="ctxShowOnlyThis()"><span class="ctx-icon">🎯</span> Focus on This Node</div>';
+  html += '<div class="ctx-sep"></div>';
+  html += '<div class="ctx-item" onclick="ctxDiscardNode()"><span class="ctx-icon">✕</span> Remove This Node</div>';
+  html += '<div class="ctx-item" onclick="ctxDiscardAllExcept()"><span class="ctx-icon">◎</span> Remove All Except This</div>';
+  html += '<div class="ctx-sep"></div>';
+
+  if (allClasses.length > 0) {
+    html += '<div class="ctx-sub"><div class="ctx-item"><span class="ctx-icon">📂</span> Show Only Class\u2026 <span style="margin-left:auto;color:var(--text-secondary)">\u25B8</span></div><div class="ctx-sub-menu">';
+    allClasses.forEach(c => {
+      html += '<div class="ctx-item" onclick="ctxShowClass(\'' + escapeAttr(c) + '\')">' + escapeHtml(shortUri(c)) + '</div>';
+    });
+    html += '</div></div>';
+
+    html += '<div class="ctx-sub"><div class="ctx-item"><span class="ctx-icon">🗑</span> Remove Class\u2026 <span style="margin-left:auto;color:var(--text-secondary)">\u25B8</span></div><div class="ctx-sub-menu">';
+    allClasses.forEach(c => {
+      html += '<div class="ctx-item" onclick="ctxRemoveClass(\'' + escapeAttr(c) + '\')">' + escapeHtml(shortUri(c)) + '</div>';
+    });
+    html += '</div></div>';
+    html += '<div class="ctx-sep"></div>';
+  }
+
+  if (SIM.pinned.has(data.id)) {
+    html += '<div class="ctx-item" onclick="ctxUnpin()"><span class="ctx-icon">📌</span> Unpin This Node</div>';
+  }
+  if (SIM.pinned.size > 0) {
+    html += '<div class="ctx-item" onclick="ctxUnpinAll()"><span class="ctx-icon">📌</span> Unpin All Nodes</div>';
+  }
+  html += '<div class="ctx-item" onclick="ctxRestoreAll()"><span class="ctx-icon">↩</span> Restore All Removed</div>';
+
+  ctxMenu.innerHTML = html;
+  ctxMenu.style.display = 'block';
+
+  const rendPos = ctxTarget.renderedPosition();
+  const cRect = document.getElementById('cy').getBoundingClientRect();
+  let x = rendPos.x + cRect.left;
+  let y = rendPos.y + cRect.top;
+  if (x + 240 > window.innerWidth) x -= 240;
+  if (y + 350 > window.innerHeight) y = window.innerHeight - 360;
+  if (y < 10) y = 10;
+  ctxMenu.style.left = x + 'px';
+  ctxMenu.style.top = y + 'px';
+});
+
+// Canvas right-click
+cy.on('cxttap', function(evt) {
+  if (evt.target !== cy) return;
+  evt.originalEvent.preventDefault();
+  ctxTarget = null;
+  let html = '<div class="ctx-header">Canvas</div>';
+  html += '<div class="ctx-item" onclick="ctxRestoreAll()"><span class="ctx-icon">↩</span> Restore All Removed</div>';
+  if (SIM.pinned.size > 0) {
+    html += '<div class="ctx-item" onclick="ctxUnpinAll()"><span class="ctx-icon">📌</span> Unpin All Nodes</div>';
+  }
+  html += '<div class="ctx-item" onclick="fitGraph(); hideCtxMenu();"><span class="ctx-icon">⊞</span> Fit to View</div>';
+  ctxMenu.innerHTML = html;
+  ctxMenu.style.display = 'block';
+  const e = evt.originalEvent;
+  let x = e.clientX, y = e.clientY;
+  if (x + 240 > window.innerWidth) x -= 240;
+  if (y + 200 > window.innerHeight) y -= 200;
+  ctxMenu.style.left = x + 'px';
+  ctxMenu.style.top = y + 'px';
+});
+
+
+// ---- Context menu actions ----
+
+function ctxExpandNeighbors() {
+  const target = ctxTarget;
+  hideCtxMenu();
+  if (!target) return;
+  const hood = target.neighborhood();
+  hood.nodes().style('display', 'element');
+  hood.edges().style('display', 'element');
+  cy.elements().removeClass('highlighted faded neighbor highlighted-edge');
+  target.addClass('highlighted');
+  hood.nodes().addClass('neighbor');
+  hood.edges().addClass('highlighted-edge');
+  cy.elements().not(target).not(hood).addClass('faded');
+  updateInfo();
+}
+
+function ctxShowOnlyThis() {
+  const target = ctxTarget;
+  hideCtxMenu();
+  if (!target) return;
+  const keep = target.neighborhood().add(target);
+  cy.elements().not(keep).style('display', 'none');
+  keep.style('display', 'element');
+  cy.elements().removeClass('highlighted faded neighbor highlighted-edge');
+  cy.fit(keep, 50);
+  updateInfo();
+}
+
+function ctxDiscardNode() {
+  const target = ctxTarget;
+  hideCtxMenu();
+  if (!target) return;
+  removeNode(target);
+}
+
+function ctxDiscardAllExcept() {
+  const target = ctxTarget;
+  hideCtxMenu();
+  if (!target) return;
+  const keep = target.neighborhood().add(target);
+  cy.elements().not(keep).style('display', 'none');
+  keep.style('display', 'element');
+  cy.elements().removeClass('highlighted faded neighbor highlighted-edge');
+  cy.fit(keep, 50);
+  updateInfo();
+}
+
+function ctxShowClass(classUri) {
+  hideCtxMenu();
+  const matching = cy.nodes().filter(n =>
+    n.data('id') === classUri || (n.data('classes') && n.data('classes').includes(classUri))
+  );
+  if (matching.length === 0) return;
+  const connected = matching.edgesWith(matching);
+  cy.elements().style('display', 'none');
+  matching.style('display', 'element');
+  connected.style('display', 'element');
+  cy.fit(matching, 50);
+  updateInfo();
+}
+
+function ctxRemoveClass(classUri) {
+  hideCtxMenu();
+  const matching = cy.nodes().filter(n =>
+    n.data('id') === classUri || (n.data('classes') && n.data('classes').includes(classUri))
+  );
+  matching.forEach(n => {
+    n.style('display', 'none');
+    n.connectedEdges().style('display', 'none');
+  });
+  updateInfo();
+}
+
+function ctxUnpin() {
+  const target = ctxTarget;
+  hideCtxMenu();
+  if (target) SIM.pinned.delete(target.data('id'));
+}
+
+function ctxUnpinAll() {
+  hideCtxMenu();
+  SIM.pinned.clear();
+}
+
+function ctxRestoreAll() {
+  hideCtxMenu();
+  cy.elements().style('display', 'element');
+  cy.elements().removeClass('highlighted faded neighbor highlighted-edge');
+  updateInfo();
+}
+
+// ---- Shared remove-node helper ----
+function removeNode(node) {
+  node.style('display', 'none');
+  node.connectedEdges().style('display', 'none');
+  cy.elements().removeClass('highlighted faded neighbor highlighted-edge');
+  hideNodeRemoveBtn();
+  updateInfo();
+}
+
+function escapeAttr(str) {
+  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+
+// ==================== INTERACTIONS ====================
+let selectedNode = null;
+
+cy.on('tap', 'node', function(evt) {
+  const node = evt.target;
+  selectedNode = node;
+  cy.elements().removeClass('highlighted faded neighbor highlighted-edge');
+  node.addClass('highlighted');
+  const hood = node.neighborhood();
+  hood.nodes().addClass('neighbor');
+  hood.edges().addClass('highlighted-edge');
+  cy.elements().not(node).not(hood).addClass('faded');
+  showTooltip(node, evt.originalEvent || evt);
+  try { window.parent.postMessage({type:'node_click', data:node.data()}, '*'); } catch(e){}
+});
+
+cy.on('tap', function(evt) {
+  if (evt.target === cy) {
+    cy.elements().removeClass('highlighted faded neighbor highlighted-edge');
+    hideTooltip();
+    selectedNode = null;
+    try { window.parent.postMessage({type:'node_deselect'}, '*'); } catch(e){}
+  }
+});
+
+// Label hover behaviour & remove button
+let hoverNode = null;
+const removeBtn = document.getElementById('node-remove-btn');
+
+cy.on('mouseover', 'node', function(evt) {
+  const n = evt.target;
+  hoverNode = n;
+  n.style('cursor', 'pointer');
+  if (labelMode === 'hover') n.addClass('label-hover-show');
+  if (!selectedNode) showTooltip(n, evt.originalEvent || evt);
+  showNodeRemoveBtn(n);
+});
+cy.on('mouseout', 'node', function(evt) {
+  if (labelMode === 'hover') evt.target.removeClass('label-hover-show');
+  if (!selectedNode) hideTooltip();
+  // Small delay so user can reach the X button
+  setTimeout(function() {
+    if (hoverNode && hoverNode.id() === evt.target.id()) {
+      hideNodeRemoveBtn();
+      hoverNode = null;
+    }
+  }, 200);
+});
+
+function showNodeRemoveBtn(node) {
+  const rp = node.renderedPosition();
+  const rw = node.renderedWidth();
+  const container = document.getElementById('cy').getBoundingClientRect();
+  removeBtn.style.left = (rp.x + container.left + rw/2 - 2) + 'px';
+  removeBtn.style.top  = (rp.y + container.top  - rw/2 - 10) + 'px';
+  removeBtn.style.display = 'block';
+}
+function hideNodeRemoveBtn() {
+  removeBtn.style.display = 'none';
+}
+
+removeBtn.addEventListener('mouseenter', function() {
+  // Keep button visible while hovering it
+  removeBtn.style.display = 'block';
+});
+removeBtn.addEventListener('mouseleave', function() {
+  hideNodeRemoveBtn();
+  hoverNode = null;
+});
+removeBtn.addEventListener('click', function(e) {
+  e.stopPropagation();
+  if (hoverNode) {
+    removeNode(hoverNode);
+    hoverNode = null;
+  }
+});
+
+cy.on('mouseover', 'edge', function(evt) {
+  evt.target.style('label', evt.target.data('label'));
+  evt.target.style('font-size', '9px');
+});
+cy.on('mouseout', 'edge', function(evt) { evt.target.style('label', ''); });
+
+
+// ==================== TOOLTIP ====================
+function showTooltip(node, event) {
+  const tooltip = document.getElementById('tooltip');
+  const data = node.data();
+  const typeColors = {
+    'class':'#6366f1','instance':'#06b6d4','literal':'#f59e0b',
+    'property':'#10b981','blank':'#94a3b8','resource':'#64748b',
+  };
+  const bgColor = typeColors[data.node_type] || '#64748b';
+  let html = '<div class="tt-label">' + escapeHtml(data.label) + '</div>'
+    + '<div class="tt-type" style="background:' + bgColor + ';color:white">' + data.node_type + '</div>'
+    + '<div class="tt-uri">' + escapeHtml(data.id) + '</div>';
+  if (data.classes && data.classes.length > 0)
+    html += '<div class="tt-row"><span class="tt-key">Types:</span><span class="tt-val">' + data.classes.map(c => shortUri(c)).join(', ') + '</span></div>';
+  if (data.namespace)
+    html += '<div class="tt-row"><span class="tt-key">Namespace:</span><span class="tt-val">' + shortUri(data.namespace) + '</span></div>';
+  const edges = node.connectedEdges();
+  const incoming = edges.filter(e => e.data('target') === data.id).length;
+  const outgoing = edges.filter(e => e.data('source') === data.id).length;
+  html += '<div class="tt-row"><span class="tt-key">Connections:</span><span class="tt-val">' + incoming + ' in / ' + outgoing + ' out</span></div>';
+  if (SIM.pinned.has(data.id))
+    html += '<div class="tt-row"><span class="tt-key">Status:</span><span class="tt-val">\uD83D\uDCCC Pinned</span></div>';
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
+  const rendPos = node.renderedPosition();
+  const container = document.getElementById('cy').getBoundingClientRect();
+  let x = rendPos.x + container.left + 20;
+  let y = rendPos.y + container.top - 20;
+  if (x + 400 > window.innerWidth) x = rendPos.x + container.left - 420;
+  if (y + 200 > window.innerHeight) y = window.innerHeight - 220;
+  if (y < 10) y = 10;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+function hideTooltip() { document.getElementById('tooltip').style.display = 'none'; }
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+function shortUri(uri) {
+  if (uri.includes('#')) return uri.split('#').pop();
+  return uri.split('/').pop();
+}
+
+// ==================== FULLSCREEN ====================
+function toggleFullscreen() {
+  const elem = document.documentElement;
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+}
+
+// ==================== LAYOUT ====================
+function setLayout(name) {
+  SIM.running = false;
+  if (SIM.rafId) cancelAnimationFrame(SIM.rafId);
+  SIM.velocities.forEach(v => { v.vx = 0; v.vy = 0; });
+  SIM.pinned.clear();
+
+  let opts = { name: name, animate: true, animationDuration: 600 };
+  if (name === 'fcose') {
+    opts.randomize = false;
+    opts.nodeSeparation = 120;
+    opts.idealEdgeLength = 120;
+    opts.stop = function() { simKickAll(1.0); };
+  } else {
+    opts.stop = function() { simKickAll(0.5); };
+  }
+  if (name === 'breadthfirst') { opts.directed = true; opts.spacingFactor = 1.2; }
+  if (name === 'circle') { opts.spacingFactor = 1.5; }
+  cy.layout(opts).run();
+}
+
+// ==================== CONTROLS ====================
+function fitGraph() { cy.fit(50); }
+function zoomIn() { cy.zoom(cy.zoom() * 1.3); }
+function zoomOut() { cy.zoom(cy.zoom() / 1.3); }
+
+function toggleTheme() {
+  isDark = !isDark;
+  if (isDark) {
+    document.body.classList.remove('light-mode');
+    cy.nodes().style({ 'color': '#f1f5f9', 'text-outline-color': '#0f172a' });
+    cy.edges().style({ 'text-outline-color': '#0f172a', 'color': '#94a3b8' });
+  } else {
+    document.body.classList.add('light-mode');
+    cy.nodes().style({ 'color': '#0f172a', 'text-outline-color': '#ffffff' });
+    cy.edges().style({ 'text-outline-color': '#ffffff', 'color': '#475569' });
+  }
+}
+
+// ==================== SEARCH ====================
+function searchNodes(query) {
+  cy.nodes().removeClass('search-match faded');
+  if (!query || query.length < 2) return;
+  const q = query.toLowerCase();
+  const matches = cy.nodes().filter(n => {
+    const d = n.data();
+    return (d.label && d.label.toLowerCase().includes(q)) ||
+           (d.id && d.id.toLowerCase().includes(q)) ||
+           (d.node_type && d.node_type.toLowerCase().includes(q));
+  });
+  if (matches.length > 0) {
+    matches.addClass('search-match');
+    cy.elements().not(matches).not(matches.neighborhood()).addClass('faded');
+    if (matches.length === 1) cy.animate({center:{eles:matches}, zoom:2}, {duration:400});
+  }
+}
+
+// ==================== EXPORT ====================
+function exportPNG() {
+  const png64 = cy.png({full:true, scale:2, bg: isDark ? '#0f172a' : '#f8fafc'});
+  downloadURI(png64, 'knowledge_graph.png');
+}
+function exportSVG() {
+  const svg = cy.svg({full:true, scale:1, bg: isDark ? '#0f172a' : '#f8fafc'});
+  const blob = new Blob([svg], {type:'image/svg+xml'});
+  const url = URL.createObjectURL(blob);
+  downloadURI(url, 'knowledge_graph.svg');
+  URL.revokeObjectURL(url);
+}
+function exportJSON() {
+  const json = JSON.stringify(cy.json().elements, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  downloadURI(url, 'knowledge_graph.json');
+  URL.revokeObjectURL(url);
+}
+function downloadURI(uri, name) {
+  const a = document.createElement('a');
+  a.download = name; a.href = uri;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ==================== MESSAGE HANDLER ====================
+window.addEventListener('message', function(event) {
+  const msg = event.data;
+  if (!msg || !msg.type) return;
+  if (msg.type === 'highlight_class') {
+    cy.elements().removeClass('highlighted faded neighbor highlighted-edge');
+    const matches = cy.nodes().filter(n =>
+      n.data('id') === msg.classUri || (n.data('classes') && n.data('classes').includes(msg.classUri))
+    );
+    matches.addClass('highlighted');
+    cy.elements().not(matches).not(matches.neighborhood()).addClass('faded');
+    if (matches.length > 0) cy.fit(matches, 50);
+  }
+  if (msg.type === 'filter_update') {
+    cy.elements().removeClass('faded');
+    if (msg.hiddenNodes && msg.hiddenNodes.length > 0) {
+      const hidden = new Set(msg.hiddenNodes);
+      cy.nodes().filter(n => hidden.has(n.data('id'))).addClass('faded');
+    }
+  }
+  if (msg.type === 'change_layout') setLayout(msg.layout);
+  if (msg.type === 'apply_style') {
+    if (msg.styles) {
+      for (const [sel, props] of Object.entries(msg.styles)) cy.elements(sel).style(props);
+    }
+  }
+  if (msg.type === 'reset') {
+    cy.elements().removeClass('highlighted faded neighbor highlighted-edge search-match').style('display','element');
+    SIM.velocities.forEach(v => { v.vx = 0; v.vy = 0; });
+    SIM.pinned.clear();
+    SIM.running = false;
+    fitGraph();
+    updateInfo();
+  }
+});
+
+// ---- Gentle initial settle ----
+cy.one('layoutstop', function() {
+  simInit();
+  simKickAll(0.8);
+});
+</script>
+</body>
+</html>
